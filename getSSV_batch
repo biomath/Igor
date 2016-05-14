@@ -1,0 +1,40 @@
+#pragma rtGlobals=3		// Use modern global access method and strict wave access.
+
+// findSSV function from Dan Pollak and Joseph Starrett's work
+// Adapted by Matheus Macedo-Lima
+
+Function/D getSSV_batch(w)
+       wave w
+       Make/O/D/N=1 output
+       variable i, std, avg
+       variable pulse_start = 3  // Change this accordingly to match the start of the current pulse in seconds
+       variable pulse_end = 3.5  // Change this accordingly to match the end of the current pulse in seconds
+      // Edit these according to protocol used
+      variable first_pulse = -50  
+       variable number_of_pulses = 15
+       variable pulse_increments = 10
+       // Grab current pulse from raw wave name
+       variable current_step = (str2num(StringFromList(3, NameOfWave(w)	, "_"))-1)*pulse_increments+first_pulse  
+       WaveStats/Q/R=(pulse_start, pulse_end) w
+	avg = V_avg
+	std = V_sdev
+	//print "new algo std: " + num2str(std)
+	//print "new algo avg: " + num2str(avg)
+	
+	variable startTrial = x2pnt(w, pulse_start)
+	variable endTrial = x2pnt(w, pulse_end)
+	Make/O/D/N=0 destWave
+	findLevels/DEST=leveledWave/R=(pulse_start, pulse_end)/M=(x2pnt(w, .010))/Q w std * .75
+	variable leveledWaveCount = 0
+	for(i = startTrial; i < endTrial; i+=1)
+		if(w[i] < avg + std || w[i] > avg - std)
+			InsertPoints numpnts(output), 1, destWave
+			output[numpnts(output) - 1] = w[i]
+		endif
+	endfor
+       Make/D/O/N=(1,2) retVal
+       retVal[0][0] = current_step
+       retVal[0][1] = mean(output)
+       return retVal
+
+end
